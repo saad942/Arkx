@@ -1,54 +1,59 @@
-const posts = require("../post.json");
-const fs = require("fs");
+const products = require("../post.json")
+const fs = require("fs")
 
-function save_data() {
-    const js_str = JSON.stringify(posts, null, 2);
-    fs.writeFileSync("./post.json", js_str);
+
+function saveData(){
+    const js_str = JSON.stringify(products, null , 2)
+    fs.writeFileSync("./post.json", js_str)
 }
 
-exports.gitAll = (req, res) => {
-    res.send(posts);
-};
+const getProducts = (req, res)=>{
+    res.send(products)
+}
 
-exports.gitID = (req, res) => {
-    const idP = req.params.id;
-    const post = posts.find((postI) => postI.id === parseInt(idP));
-    res.status(200).send(post);
-};
+const searchForProduct = (req, res)=>{
+    const min = req.query.minPrice
+    const max = req.query.maxPrice
+    const find_product = products.filter(x=> x.price >= min && x.price <= max)
+    res.send(find_product)
+}
+const getProductById = (req, res)=>{
+    const id = req.params.id
+    const find_id = products.filter(x => x.id == id)
+	if (find_id[0]) res.send(find_id)
+    else res.send("this product does not exist")
+    res.send(find_id)
+}
 
-exports.addPost = (req, res) => {
-    const { post } = req.body;
-    const id = posts.length + 1;
-    const newPost = { id, post };
-    posts.push(newPost);
+const creatProduct = (req, res)=>{
+    const {name, price} = req.body
+	const id = products.length + 1
+	const data = { id: id, name : name, price: price}
+    products.push(data)
+	// console.log(data)
+    saveData()
+    res.send("created")
+}
 
-    save_data();
-    res.send('Post added successfully');
-};
+const updateProduct = (req, res)=>{
+    const id_url = req.params.id
+    const find_id = products.filter(x => x.id == id_url)
+    if (typeof(find_id[0]) != 'object'){
+        res.send("this product doesn't exist!")
+        return
+    }
+    const { name, price} = req.body
+    find_id[0].name = name
+    find_id[0].price = price
+    saveData()
+    res.send("Updated")
+}  
 
-exports.UpdatePost = (req, res) => {
-    const idP = req.params.id;
-    const Upost = req.body.name;
-    const index = posts.findIndex((post) => post.id === parseInt(idP));
-    posts[index].name = Upost;
-    save_data();
-    res.send('update');
-};
-
-exports.searchP = (req, res) => {
-    const postName = req.query.name;
-
-    const searchResult = posts.find(post => post.name === postName);
-    res.send(searchResult);
-};
-
-
-exports.DeleteP = (req, res) => {
-    const idP = req.params.id;
-    const index = posts.findIndex((post) => post.id === parseInt(idP));
-        posts.splice(index, 1);
-        save_data();
-        res.send('Post deleted successfully');
-  
-};
-
+const deletePorduct = (req, res)=>{
+    const id_url = req.params.id
+	const find_id = products.filter(x=>x.id != id_url)
+	products = find_id
+    res.send(products)
+    
+}
+module.exports = {getProducts, getProductById, searchForProduct, updateProduct,creatProduct, deletePorduct}

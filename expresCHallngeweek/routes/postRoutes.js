@@ -1,15 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const { addPost, gitID, UpdatePost, DeleteP, searchP, gitAll } = require('../controllers/postController');
+const jwt = require('jsonwebtoken');
+const dataUser = require("../dataUser.json")
 
-router.use(express.json());
+const {getProducts, getProductById, creatProduct, updateProduct, deletePorduct} = require("../controllers/postController")
 
-router.post('/add', addPost);
-router.get('/affiche', gitAll);
-router.get('/affiche/:id', gitID);
-router.put('/update/:id', UpdatePost);
-router.delete('/delete/:id', DeleteP); // DELETE route definition
+router.post('/login', (req, res) => {
+	const {name,  password} = req.body
+	const user = {name: name, password:password}
+	const findUser = dataUser.filter(x => x.name == name && x.password == password)
+	if (!findUser[0]) return res.send("info wrong")
+	const token = jwt.sign(user, "my_scrt",{ expiresIn: '3h' })
+	res.json({TOKEN:token})
+});
 
-router.get('/search', searchP);
+const verifyToken = (req, res, next)=>{
+		const authHeader = req.headers['authorization']
+		const token = authHeader 
+		if (token == null) return res.sendStatus(401) //unauthorized
+		jwt.verify(token, "my_scrt", (err, data)=>{
+			if (err) return res.sendStatus(403) //forbidden
+			req.user = data
+			next()
+		})
+}
+router.get("/", verifyToken, (req, res)=>{
+				res.send(`Hello ${req.user.name}\nyou have access to creat or update or delete products`)
+})
+router.get("/products", verifyToken,getProducts)
+router.get("/products/:id", verifyToken,getProductById)
+router.post("/products", verifyToken, creatProduct)
+router.put("/products/:id",verifyToken, updateProduct)
+router.delete("/products/:id", verifyToken, deletePorduct)
 
 module.exports = router;
