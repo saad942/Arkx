@@ -1,36 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const dataUser = require("../dataUser.json")
+const { getProductById, createProduct, updateProduct, deleteProduct,searchForProduct,getProduct } = require("../controllers/postController");
+const dataUser = require("../dataUser.json");
 
-const {getProducts, getProductById, creatProduct, updateProduct, deletePorduct} = require("../controllers/postController")
-
+// Login route
 router.post('/login', (req, res) => {
-	const {name,  password} = req.body
-	const user = {name: name, password:password}
-	const findUser = dataUser.filter(x => x.name == name && x.password == password)
-	if (!findUser[0]) return res.send("info wrong")
-	const token = jwt.sign(user, "my_scrt",{ expiresIn: '3h' })
-	res.json({TOKEN:token})
+    const { name, password } = req.body;
+    
+    // Find user in database
+    const user = dataUser.find(u => u.name === name && u.password === password);
+    
+    if (!user) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign({ username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    
+    // Send token as response
+    res.json({ token });
 });
 
-const verifyToken = (req, res, next)=>{
-		const authHeader = req.headers['authorization']
-		const token = authHeader 
-		if (token == null) return res.sendStatus(401) //unauthorized
-		jwt.verify(token, "my_scrt", (err, data)=>{
-			if (err) return res.sendStatus(403) //forbidden
-			req.user = data
-			next()
-		})
-}
-router.get("/", verifyToken, (req, res)=>{
-				res.send(`Hello ${req.user.name}\nyou have access to creat or update or delete products`)
-})
-router.get("/products", verifyToken,getProducts)
-router.get("/products/:id", verifyToken,getProductById)
-router.post("/products", verifyToken, creatProduct)
-router.put("/products/:id",verifyToken, updateProduct)
-router.delete("/products/:id", verifyToken, deletePorduct)
+// Token verification middleware
+const verifyToken = (req, res, next) => {
+    const token = req.headers['authorization'];
+    if (!token) return res.sendStatus(401); // Unauthorized
+    jwt.verify(token, process.env.JWT_SECRET, (err, data) => {
+        if (err) return res.sendStatus(403); // Forbidden
+        req.user = data;
+        next();
+    });
+};
+router.get("/products",getProduct);
+router.get("/products/:id",  getProductById);
+router.post("/products",verifyToken,  createProduct);
+router.put("/products/:id",  updateProduct);
+router.delete("/products/:id", deleteProduct);
+router.get("/products",searchForProduct)
 
 module.exports = router;

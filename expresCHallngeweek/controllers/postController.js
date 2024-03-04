@@ -1,59 +1,99 @@
-const products = require("../post.json")
-const fs = require("fs")
-
+const Product = require('../models/models');
+const fs=require('fs');
+const products = require("../post.json");
 
 function saveData(){
     const js_str = JSON.stringify(products, null , 2)
     fs.writeFileSync("./post.json", js_str)
 }
-
-const getProducts = (req, res)=>{
-    res.send(products)
-}
-
-const searchForProduct = (req, res)=>{
-    const min = req.query.minPrice
-    const max = req.query.maxPrice
-    const find_product = products.filter(x=> x.price >= min && x.price <= max)
-    res.send(find_product)
-}
-const getProductById = (req, res)=>{
-    const id = req.params.id
-    const find_id = products.filter(x => x.id == id)
-	if (find_id[0]) res.send(find_id)
-    else res.send("this product does not exist")
-    res.send(find_id)
-}
-
-const creatProduct = (req, res)=>{
-    const {name, price} = req.body
-	const id = products.length + 1
-	const data = { id: id, name : name, price: price}
-    products.push(data)
-	// console.log(data)
-    saveData()
-    res.send("created")
-}
-
-const updateProduct = (req, res)=>{
-    const id_url = req.params.id
-    const find_id = products.filter(x => x.id == id_url)
-    if (typeof(find_id[0]) != 'object'){
-        res.send("this product doesn't exist!")
-        return
+const searchForProduct = async (req, res) => {
+    try {
+        const min = req.query.minPrice;
+        const max = req.query.maxPrice;
+        const products = await Product.find({ price: { $gte: min, $lte: max } });
+        if (products.length > 0) {
+            res.send(products);
+        } else {
+            res.status(404).send('No products found within the specified price range');
+        }
+    } catch (error) {
+        console.error('Error searching for products:', error);
+        res.status(500).send('Error searching for products');
     }
-    const { name, price} = req.body
-    find_id[0].name = name
-    find_id[0].price = price
-    saveData()
-    res.send("Updated")
-}  
+};
 
-const deletePorduct = (req, res)=>{
-    const id_url = req.params.id
-	const find_id = products.filter(x=>x.id != id_url)
-	products = find_id
-    res.send(products)
+
+const getProductById = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const product = await Product.find({id:id});
+        if (product) {
+            res.send(product);
+        } else {
+            res.status(404).send('Product not found');
+        }
+    } catch (error) {
+        console.error('Error retrieving product:', error);
+        res.status(500).send('Error retrieving product');
+    }
+};
+
+
+const createProduct = async (req, res) => {
+    try {
+        const { name, price, description } = req.body;
+        const product = new Product({ name, price, description });
+        await product.save();
+        saveData();
+        res.send(product);
+    } catch (error) {
+        console.error('Error creating product:', error);
+        res.status(500).send('Error creating product');
+    }
+};
+
+const updateProduct = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { name, price, description } = req.body;
+        const updatedProduct = await Product.findOneAndUpdate({id:id}, {$set:{ name, price, description }}, { new: true });
+        if (updatedProduct) {
+            res.send(updatedProduct);
+        } else {
+            res.status(404).send('Product not found');
+        }
+    } catch (error) {
+        console.error('Error updating product:', error);
+        res.status(500).send('Error updating product');
+    }
+};
+
+const deleteProduct = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const deletedProduct = await Product.findOneAndDelete({id:id});
+        if (deletedProduct) {
+            res.send('Product deleted successfully');
+        } else {
+            res.status(404).send('Product not found');
+        }
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        res.status(500).send('Error deleting product');
+    }
+};
+
+const getProduct=async(req,res)=>{
+    const product= await Product.find()
+    if(product){
+       res.send(product) 
+    }else{
+        res.status(404).send('Product not found');
+
+    }
     
-}
-module.exports = {getProducts, getProductById, searchForProduct, updateProduct,creatProduct, deletePorduct}
+
+};
+
+module.exports = { getProductById, createProduct, updateProduct, deleteProduct,searchForProduct,getProduct };
